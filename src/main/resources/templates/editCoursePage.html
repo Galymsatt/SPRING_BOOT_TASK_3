@@ -1,0 +1,26 @@
+<html xmlns:th="http://www.w3.org/1999/xhtml"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorator="layouts/main.html">
+
+<div layout:fragment = "contentPart">
+
+    <h5 class="container offset" th:text="${course.name}"></h5>
+    <div class="container">
+        <div class="col-4 my-5">
+            <form action="/editCourse" method="post">
+                <input type="hidden" name="id" th:value="${course.id}">
+                <div class="form-group">
+                    <label>Course name: </label>
+                    <input type="text" name="course" class="form-control" th:placeholder="${course.name}" th:value="${course.name}">
+                </div>
+                <div class="form-group">
+                    <label>Course credits: </label>
+                    <input type="number" min="1" name="credits" class="form-control" th:placeholder="${course.credits}" th:value="${course.credits}">
+                </div>
+                <button type="submit" class="btn btn-primary float-right mb-4">Edit</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+</html>
