@@ -1,24 +1,19 @@
-<html xmlns:th="http://www.w3.org/1999/xhtml">
-<head>
-    <title>Toylar</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-</head>
-<body>
+<html xmlns:th="http://www.w3.org/1999/xhtml"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorator="layouts/main.html">
 
-<h5 class="container offset">Categories</h5>
-<div class="container">
-    <div class="row mb-4">
-        <div class="col-4 mr-5">
-            <div class="list-group">
+<div layout:fragment = "contentPart">
 
-                <a href="#" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
-                <a href="#" class="list-group-item list-group-item-action">Morbi leo risus</a>
-                <a href="#" class="list-group-item list-group-item-action">Porta ac consectetur ac</a>
-            </div>
+    <div class="col-4 mr-5">
+        <div class="list-group">
+
+            <a class="list-group-item list-group-item-action" th:href="@{/courses}">COURSES</a>
+            <a class="list-group-item list-group-item-action" th:href="@{/students}">STUDENTS</a>
+            <a class="list-group-item list-group-item-action" th:href="@{/groups}">GROUPS</a>
+
         </div>
     </div>
 
-</div>
 
-</body>
+</div>
 </html>
