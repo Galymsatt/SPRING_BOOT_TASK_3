@@ -1,5 +1,6 @@
 package com.project.demo.entities;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,21 +11,17 @@ import javax.persistence.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "toys")
-public class Toys {
+@Table(name = "courses")
+public class Courses {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    Long id;
+    private Long id;
 
     @Column(name = "name")
     private String name;
 
-    @Column(name = "price")
-    private double price;
-
-    @ManyToOne
-    @JoinColumn(name = "categorie_id")
-    private Categories categories;
+    @Column(name = "credits")
+    private int credits;
 }
