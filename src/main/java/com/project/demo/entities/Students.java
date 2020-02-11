@@ -28,11 +28,13 @@ public class Students {
     @Column(name = "yearOfAddmission")
     private int yearOfAddmission;
 
-    @ManyToMany
-    @JoinColumn(name = "courses")
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
+    @JoinTable(name = "Stduents_Courses",
+            joinColumns=@JoinColumn(name="student_id"),
+            inverseJoinColumns=@JoinColumn(name="course_id"))
     private Set<Courses> courses;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinColumn(name = "groups")
     private Set <Groups> groups;
 }

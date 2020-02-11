@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import javax.persistence.PersistenceContext;
 import java.util.List;
 import java.util.Optional;
 
@@ -121,14 +125,40 @@ public class MainController {
         return "redirect:/students";
     }
 
+
+
     @GetMapping(path = "/editStudentPage/{id}")
     public String editStudentPage(ModelMap model, @PathVariable(name = "id") Long id){
 
         Optional<Students> student = studentsRepository.findById(id);
         model.addAttribute("student", student.orElse(new Students(null, "No Name", "No Name", 0, null, null)));
 
+        if (student.isPresent()) {
+            Students s = student.get();
+            List<Courses> notAttendCourses = coursesRepository.findCoursesByStudentsIsNotContaining(s);
+
+            model.addAttribute("notAttendCourses", notAttendCourses);
+        }
+
+//        Students s = student.get();
+//        List<Courses> notAttendCourses = coursesRepository.findCoursesByStudentsIsNotContaining(s);
+//        for (Courses c : notAttendCourses)//Pashet
+//            for (Students st : c.getStudents())
+//                System.out.println("Course "+c.getName()+" Student: "+st.getName());
+
+
+
+        List<Courses> notAttend = coursesRepository.findAll();
+        for (Courses c : notAttend)//Pashet
+            for (Students st : c.getStudents())
+                System.out.println("Course: "+c.getName()+", Student: "+st.getName());
 
         //model.addAttribute("studentCourses", studentCourses);
+        ///////////////////////////////////////////////////////////////////////
+
+
+
+        //////////////////////////////////////////////////////////////////////
 
         return "editStudentPage";
     }
@@ -157,5 +187,47 @@ public class MainController {
 
         studentsRepository.deleteById(id);
         return "redirect:/students";
+    }
+
+/*    @GetMapping(path = "/addCourseToStudentPage/{idshka}")//Artyk, kerek emes eken
+    public String addCourseToStudentPage(ModelMap model, @PathVariable(name = "idshka") Long id){
+        Optional<Students> opStudent = studentsRepository.findById(id);
+//        if (opStudent.isPresent()) {
+            Students s = opStudent.get();
+            List<Courses> notAttendCourses = coursesRepository.findCoursesByStudentsIsNotContaining(s);
+//        }
+
+//        for (Courses c : notAttendCourses)//Pashet
+//            System.out.println(c.getName());
+
+        model.addAttribute("notAttendCourses", notAttendCourses);
+        model.addAttribute("studentId", id);
+
+        return "addCourseToStudentPage";
+    }*/
+
+
+    @PersistenceContext
+    private EntityManager em;
+
+    @PostMapping(path = "/addCourseToStudent")
+    public String addCourseToStudent(@RequestParam(name = "studentId") Long studentId,
+                                    @RequestParam(name = "courseId") Long courseId){
+
+//        studentsRepository.findById(studentId).get().getCourses().add(coursesRepository.findById(courseId).get());//Prekol, nuzho normalnoo pisat
+        //studentsRepository.save();
+
+        Optional<Students> student = studentsRepository.findById(studentId);//Searching student
+        Optional<Courses> course = coursesRepository.findById(courseId);//Searching course
+        if(student.isPresent() && course.isPresent()){
+            student.get().getCourses().add(coursesRepository.findById(courseId).get());//Tut ya zakidyvayu sootvetstvuyushi curs k studentu
+            studentsRepository.save(student.get());
+            //em.persist(student.get());
+
+        }
+//        course.get().getStudents().add(studentsRepository.findById(1L).get());//Tut tochno naoborot, ne nuzhno
+//        coursesRepository.save(course.get());
+
+        return "redirect:/editStudentPage/"+studentId;
     }
 }
