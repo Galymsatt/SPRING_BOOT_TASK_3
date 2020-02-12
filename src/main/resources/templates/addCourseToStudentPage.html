@@ -1,0 +1,38 @@
+<html xmlns:th="http://www.w3.org/1999/xhtml"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorator="layouts/main.html">
+
+<div layout:fragment = "contentPart">
+
+<h5 class="container offset-2 mt-4">Courses</h5>
+<div class="container">
+
+    <div class="col-6 my-4">
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">NAME</th>
+                <th scope="col">CREDITS</th>
+                <th scope="col">ADD</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each = "c : ${notAttendCourses}">
+                <th scope="row" th:text = "${c.id}"></th>
+                <td th:text = "${c.name}"></td>
+                <td th:text = "${c.credits}"></td>
+                <form action="/addCourseToStudent" method="post">
+                    <input type="hidden" value="${studentId}" name="studentId">
+                    <input type="hidden" value="${c.id}" name="courseId">
+                    <td><button type="submit" class="btn btn-primary">Add</button></td>
+                </form>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+</div>
+</html>

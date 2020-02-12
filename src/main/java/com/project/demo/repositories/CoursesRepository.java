@@ -16,11 +16,6 @@ public interface CoursesRepository extends JpaRepository<Courses, Long> {
 
     List<Courses> findAll();
     Optional<Courses> findById(Long id);
-    List<Courses> findCoursesByStudentsIsNot(Students s);//Ne checkal, skoree ne pashet
-
-    List<Courses> findCoursesByStudentsIsNotContaining(Students s);
-
-    List<Courses> findByStudentsIsNotContaining(Students s);
 
 //    @Query("SELECT c FROM Courses c WHERE :student not in : c.students")
 //    List<Courses> findCoursesNotAttend(@Param("student") Students student);

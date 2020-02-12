@@ -26,12 +26,4 @@ public class Courses {
     @Column(name = "credits")
     private int credits;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    //@JoinColumn(name = "students")
-    private Set<Students> students;
-
-    public Courses(Long id, String name, int credits) {//Что бы выйти из косяка
-        this.name = name;
-        this.credits = credits;
-    }
 }

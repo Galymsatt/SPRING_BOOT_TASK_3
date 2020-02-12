@@ -133,32 +133,16 @@ public class MainController {
         Optional<Students> student = studentsRepository.findById(id);
         model.addAttribute("student", student.orElse(new Students(null, "No Name", "No Name", 0, null, null)));
 
-        if (student.isPresent()) {
-            Students s = student.get();
-            List<Courses> notAttendCourses = coursesRepository.findCoursesByStudentsIsNotContaining(s);
-
-            model.addAttribute("notAttendCourses", notAttendCourses);
-        }
-
-//        Students s = student.get();
-//        List<Courses> notAttendCourses = coursesRepository.findCoursesByStudentsIsNotContaining(s);
-//        for (Courses c : notAttendCourses)//Pashet
-//            for (Students st : c.getStudents())
-//                System.out.println("Course "+c.getName()+" Student: "+st.getName());
-
-
-
         List<Courses> notAttend = coursesRepository.findAll();
-        for (Courses c : notAttend)//Pashet
-            for (Students st : c.getStudents())
-                System.out.println("Course: "+c.getName()+", Student: "+st.getName());
-
-        //model.addAttribute("studentCourses", studentCourses);
+        notAttend.removeAll(student.get().getCourses());
+        model.addAttribute("notAttendCourses", notAttend);
         ///////////////////////////////////////////////////////////////////////
 
+        List<Groups> notAttendGroups = groupsRepository.findAll();
+        notAttendGroups.removeAll(student.get().getGroups());
+        model.addAttribute("notAttendGroups", notAttendGroups);
 
 
-        //////////////////////////////////////////////////////////////////////
 
         return "editStudentPage";
     }
@@ -207,27 +191,53 @@ public class MainController {
     }*/
 
 
-    @PersistenceContext
-    private EntityManager em;
-
     @PostMapping(path = "/addCourseToStudent")
     public String addCourseToStudent(@RequestParam(name = "studentId") Long studentId,
                                     @RequestParam(name = "courseId") Long courseId){
-
-//        studentsRepository.findById(studentId).get().getCourses().add(coursesRepository.findById(courseId).get());//Prekol, nuzho normalnoo pisat
-        //studentsRepository.save();
 
         Optional<Students> student = studentsRepository.findById(studentId);//Searching student
         Optional<Courses> course = coursesRepository.findById(courseId);//Searching course
         if(student.isPresent() && course.isPresent()){
             student.get().getCourses().add(coursesRepository.findById(courseId).get());//Tut ya zakidyvayu sootvetstvuyushi curs k studentu
             studentsRepository.save(student.get());
-            //em.persist(student.get());
 
         }
-//        course.get().getStudents().add(studentsRepository.findById(1L).get());//Tut tochno naoborot, ne nuzhno
-//        coursesRepository.save(course.get());
 
         return "redirect:/editStudentPage/"+studentId;
+    }
+
+    @PostMapping(path = "/removeCourseFromStudent")
+    public String removeCourseFromStudent(@RequestParam(name = "course_id") Long course_id,
+                                          @RequestParam(name = "student_id") Long student_id){
+
+        Students student = studentsRepository.findById(student_id).get();
+        student.getCourses().remove(coursesRepository.findById(course_id).get());
+        studentsRepository.save(student);
+
+        return "redirect:/editStudentPage/"+student_id;
+    }
+
+    /////////////////////////////ADD GROUP/////////////////////////////////////////////////////////////////////////
+
+    @PostMapping(path = "/addGroupToStudent")
+    public String addGroupToStudent(@RequestParam(name = "studentId") Long studentId,
+                                    @RequestParam(name = "groupId") Long groupId){
+
+        Students student = studentsRepository.findById(studentId).get();
+        student.getGroups().add(groupsRepository.findById(groupId).get());
+        studentsRepository.save(student);
+
+        return "redirect:/editStudentPage/"+studentId;
+    }
+
+    @PostMapping(path = "/removeGroupFromStudent")
+    public String removeGroupFromStudent(@RequestParam(name = "group_id") Long group_id,
+                                          @RequestParam(name = "student_id") Long student_id){
+
+        Students student = studentsRepository.findById(student_id).get();
+        student.getGroups().remove(groupsRepository.findById(group_id).get());
+        studentsRepository.save(student);
+
+        return "redirect:/editStudentPage/"+student_id;
     }
 }

@@ -29,9 +29,7 @@ public class Students {
     private int yearOfAddmission;
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
-    @JoinTable(name = "Stduents_Courses",
-            joinColumns=@JoinColumn(name="student_id"),
-            inverseJoinColumns=@JoinColumn(name="course_id"))
+    @JoinColumn(name = "courses")
     private Set<Courses> courses;
 
     @ManyToMany(fetch = FetchType.EAGER)
