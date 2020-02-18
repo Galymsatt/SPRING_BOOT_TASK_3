@@ -34,7 +34,7 @@
             <h1 class="display-4" th:text="${post.title}"></h1>
             <p class="lead" th:text="${post.shortContent}"></p>
             <hr class="my-4">
-            <p th:text="${post.author.name}"></p>
+            <p>Author: <span th:text="${post.author.name}"></span>, at <span th:text="${post.postDate}"></span></p>
             <a class="btn btn-primary btn-lg" th:href="@{'newsPage/'+${post.id}}" role="button">Learn more</a>
         </div>
     </div>

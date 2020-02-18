@@ -1,8 +1,10 @@
 package com.project.demo.controller;
 
+import com.project.demo.entities.Comment;
 import com.project.demo.entities.NewsPost;
 import com.project.demo.entities.Role;
 import com.project.demo.entities.Users;
+import com.project.demo.repositories.CommentRepository;
 import com.project.demo.repositories.NewsPostRepository;
 import com.project.demo.repositories.RoleRepository;
 import com.project.demo.repositories.UserRepository;
@@ -37,6 +39,9 @@ public class MainController {
 
     @Autowired
     NewsPostRepository newsPostRepository;
+
+    @Autowired
+    CommentRepository commentRepository;
 
     @GetMapping(value = "/auth_reg")
     public String auth_reg(){
@@ -232,6 +237,23 @@ public class MainController {
         Optional<NewsPost> post = newsPostRepository.findById(id);
         model.addAttribute("post", post.orElse(new NewsPost(null, "No Name", "No Name", "No Name", null, null)));
 
+        Role moderator = roleRepository.getOne(3L);
+        model.addAttribute("moderator", moderator);
+
+        Role user = roleRepository.getOne(1L);
+        model.addAttribute("user", user);
+
+        List<Comment> allComments = commentRepository.findByNewsPostId(id);
+        model.addAttribute("allComments", allComments);
+
+        Users adam = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(!(authentication instanceof AnonymousAuthenticationToken)){
+            User secUser = (User)authentication.getPrincipal();
+            adam = userRepository.findByEmail(secUser.getUsername());
+        }
+        model.addAttribute("adam", adam);
+
         return "newsPage";
     }
 
@@ -268,5 +290,49 @@ public class MainController {
         return "redirect:/";
     }
 
+    /////////////////////////////////COMMENT//////////////////////////////////////////////////////////
 
+    @PostMapping(value = "/addComment")
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public String addComment(@RequestParam(name = "postId") Long postId,
+                             @RequestParam(name = "comment") String comment){
+
+        Users author = null;
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(!(authentication instanceof AnonymousAuthenticationToken)){
+            User secUser = (User)authentication.getPrincipal();
+            author = userRepository.findByEmail(secUser.getUsername());
+        }
+
+
+
+        commentRepository.save(new Comment(null, author, newsPostRepository.getOne(postId), comment, new Date()));
+
+        return "redirect:/newsPage/"+postId;
+    }
+
+
+    @PostMapping(value = "/changeComment")
+    public String changeComment(@RequestParam(name = "postId") Long postId,
+                                @RequestParam(name = "comment_id") Long comment_id,
+                                @RequestParam(name = "changedComment") String changedComment){
+
+        Optional<Comment> comment = commentRepository.findById(comment_id);
+        if(comment.isPresent()){
+            comment.get().setComment(changedComment);
+            commentRepository.save(comment.get());
+        }
+
+        return "redirect:/newsPage/"+postId;
+    }
+
+    @PostMapping(value = "/deleteComment")
+    public String deleteComment(@RequestParam(name = "postId") Long postId,
+                                @RequestParam(name = "comment_id") Long comment_id){
+
+        commentRepository.delete(commentRepository.getOne(comment_id));
+
+        return "redirect:/newsPage/"+postId;
+    }
 }
