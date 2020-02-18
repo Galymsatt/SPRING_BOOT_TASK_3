@@ -1,12 +1,18 @@
 package com.project.demo.controller;
 
-import com.project.demo.entities.Courses;
-import com.project.demo.entities.Groups;
-import com.project.demo.entities.Students;
-import com.project.demo.repositories.CoursesRepository;
-import com.project.demo.repositories.GroupsRepository;
-import com.project.demo.repositories.StudentsRepository;
+import com.project.demo.entities.NewsPost;
+import com.project.demo.entities.Role;
+import com.project.demo.entities.Users;
+import com.project.demo.repositories.NewsPostRepository;
+import com.project.demo.repositories.RoleRepository;
+import com.project.demo.repositories.UserRepository;
+import com.project.demo.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,230 +20,253 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
-import javax.persistence.PersistenceContext;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+
 
 @Controller
 public class MainController {
 
     @Autowired
-    CoursesRepository coursesRepository;
+    UserRepository userRepository;
 
     @Autowired
-    GroupsRepository groupsRepository;
+    RoleRepository roleRepository;
 
     @Autowired
-    StudentsRepository studentsRepository;
+    UserService userService;
+
+    @Autowired
+    NewsPostRepository newsPostRepository;
+
+    @GetMapping(value = "/auth_reg")
+    public String auth_reg(){
+        return "auth_reg";
+    }
 
 
-    @GetMapping(path = "/")
+    @PostMapping(value = "/register")//Users registration
+    public String register(@RequestParam(name = "email") String email,
+                           @RequestParam(name = "password") String password,
+                           @RequestParam(name = "re-password") String re_password,
+                           @RequestParam(name = "name") String name,
+                           @RequestParam(name = "surName") String surName){
+
+        String redirect = "redirect:/auth_reg?registration_error";
+
+        Users user = userRepository.findByEmail(email);
+        if(user==null){
+
+            Set<Role> roles = new HashSet<>();
+            Role userRole = roleRepository.getOne(1l);
+            roles.add(userRole);
+
+            user = new Users(null, email, password, name, surName, true, roles);
+            userService.registerUser(user);//osy zherge kelgen zat kaida ketedi?
+            redirect = "redirect:/auth_reg?registration_success";
+
+        }
+
+        return redirect;
+    }
+
+    @GetMapping(value = "/profile")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public String profile(ModelMap model){
+
+        List<Users> allUsers = userRepository.findAll();
+        model.addAttribute("allUsers", allUsers);
+
+        Role moderator = roleRepository.getOne(3L);
+        model.addAttribute("moderator", moderator);
+
+        Role admin = roleRepository.getOne(2L);
+        model.addAttribute("admin", admin);
+
+        return "profile_admin";
+    }
+
+    @GetMapping(value = "/profile_moderator")
+    @PreAuthorize("hasRole('ROLE_MODERATOR')")
+    public String profile_moderator(ModelMap model){
+
+        List<Users> allUsers = userRepository.findAll();
+        model.addAttribute("allUsers", allUsers);
+
+        Role moderator = roleRepository.getOne(3L);
+        model.addAttribute("moderator", moderator);
+
+        Role admin = roleRepository.getOne(2L);
+        model.addAttribute("admin", admin);
+
+        return "profile_moderator";
+    }
+
+    @PostMapping(value = "/addUserModerator")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public String addUserModerator(@RequestParam(name = "email") String email,
+                                   @RequestParam(name = "password") String password,
+                                   @RequestParam(name = "re-password") String re_password,
+                                   @RequestParam(name = "name") String name,
+                                   @RequestParam(name = "surName") String surName,
+                                   @RequestParam(name = "USER") int user_role,
+                                   @RequestParam(name = "MODERATOR") int moderator_role){
+
+        String redirect = "redirect:/profile?user/moderator_added_error";
+
+        Users user = userRepository.findByEmail(email);
+        if(user==null){
+
+            Set<Role> roles = new HashSet<>();
+            roles.add(roleRepository.getOne(1l));
+            if(moderator_role==1)
+                roles.add(roleRepository.getOne(3L));
+
+            user = new Users(null, email, password, name, surName, true, roles);
+            userService.registerUser(user);//osy zherge kelgen zat kaida ketedi?
+            redirect = "redirect:/profile?user/moderator_added_success";
+
+        }
+
+        return redirect;
+    }
+
+    @PostMapping(value = "/refPassword")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public String refPassword(@RequestParam(name = "id") Long id,
+                              @RequestParam(name = "password") String password){
+
+        String redirect = "redirect:/profile?password_not_refreshed";
+
+        Optional<Users> user = userRepository.findById(id);
+        if(user.isPresent()){
+            user.get().setPassword(password);
+            userService.registerUser(user.get());
+            redirect = "redirect:/profile?password_refreshed";
+        }
+
+        return redirect;
+    }
+
+    @PostMapping(value = "/blockUser")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MODERATOR')")
+    public String blockUser(@RequestParam(name = "id") Long id){
+
+        Optional<Users> user = userRepository.findById(id);
+        if(user.isPresent()){
+            user.get().setIsActive(false);
+            userRepository.save(user.get());
+        }
+
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(!(authentication instanceof AnonymousAuthenticationToken)){
+            User secUser = (User)authentication.getPrincipal();
+            Users requester = userRepository.findByEmail(secUser.getUsername());
+            if(requester.getRoles().contains(roleRepository.getOne(3L)))
+                return "redirect:/profile_moderator";
+        }
+
+
+        return "redirect:/profile";
+    }
+
+    @PostMapping(value = "/unBlockUser")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MODERATOR')")
+    public String unBlockUser(@RequestParam(name = "id") Long id){
+
+        Optional<Users> user = userRepository.findById(id);
+        if(user.isPresent()){
+            user.get().setIsActive(true);
+            userRepository.save(user.get());
+        }
+
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(!(authentication instanceof AnonymousAuthenticationToken)){
+            User secUser = (User)authentication.getPrincipal();
+            Users requester = userRepository.findByEmail(secUser.getUsername());
+            if(requester.getRoles().contains(roleRepository.getOne(3L)))
+                return "redirect:/profile_moderator";
+        }
+
+        return "redirect:/profile";
+    }
+
+    ///////////////////////////////END USER//////////////////////////////////////////
+
+    //////////////////////NEWS POST///////////////////////////////////////////////////////
+
+    @GetMapping(value = "/")
     public String index(ModelMap model){
+
+        List<NewsPost> allNews = newsPostRepository.findAll();
+        model.addAttribute("allNews", allNews);
         return "index";
     }
 
-    @GetMapping(path = "/courses")
-    public String courses(ModelMap model){
+    @PostMapping(value = "/addPost")
+    @PreAuthorize("hasRole('ROLE_MODERATOR')")
+    public String addPost(@RequestParam(name = "title") String title,
+                          @RequestParam(name = "shortContent") String shortContent,
+                          @RequestParam(name = "content") String content){
 
-        List<Courses> courses = coursesRepository.findAll();
-        model.addAttribute("courses", courses);
-        return "courses";
-    }
+//        Users author = (Users) SecurityContextHolder.getContext().getAuthentication().getPrincipal();//berem avtorizovanny user, nuzno razobratsya kak eto pashet
 
-    @PostMapping(path = "/addCourse")
-    public String addCourse(@RequestParam(name = "course") String name,
-                            @RequestParam(name = "credits") int credits){
+        Users author = null;
 
-        coursesRepository.save(new Courses(null, name, credits));
-
-        return "redirect:/courses";
-    }
-
-    @GetMapping(path = "/editCoursePage/{id}")
-    public String editCoursePage(ModelMap model,
-                                 @PathVariable(name = "id") Long id){
-
-        Optional<Courses> course = coursesRepository.findById(id);
-        model.addAttribute("course", course.orElse(new Courses(0L, "No Name", 0)));
-
-        return "editCoursePage";
-    }
-
-    @PostMapping(path = "/editCourse")
-    public String editCourse(@RequestParam(name = "id") Long id,
-                             @RequestParam(name = "course") String name,
-                             @RequestParam(name = "credits") int credits){
-
-        Optional<Courses> course = coursesRepository.findById(id);
-        if(course.isPresent()){
-            course.get().setName(name);
-            course.get().setCredits(credits);
-
-            coursesRepository.save(course.get());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(!(authentication instanceof AnonymousAuthenticationToken)){
+            User secUser = (User)authentication.getPrincipal();
+            author = userRepository.findByEmail(secUser.getUsername());
         }
 
-        return "redirect:/courses";
+        newsPostRepository.save(new NewsPost(null, title, shortContent, content, author, new Date()));
+
+        return "redirect:/";
     }
 
-    /////////////////////////////END COURSE////////////////////////////////////////////////////////////////////////
+    @GetMapping(value = "/newsPage/{id}")
+    public String newsPage(ModelMap model,
+                           @PathVariable(name = "id") Long id){
 
-    ///////////////////////////////////////GROUPS//////////////////////////////////////////////////////////////////
+        Optional<NewsPost> post = newsPostRepository.findById(id);
+        model.addAttribute("post", post.orElse(new NewsPost(null, "No Name", "No Name", "No Name", null, null)));
 
-    @GetMapping(path = "/groups")
-    public String groups(ModelMap model){
-
-        List<Groups> groups = groupsRepository.findAll();
-        model.addAttribute("groups", groups);
-        return "groups";
+        return "newsPage";
     }
 
-    @PostMapping(path = "/addGroup")
-    public String addGroup(@RequestParam(name = "name") String name,
-                           @RequestParam(name = "shortName") String shortName){
+    @PostMapping("/editPost")
+    @PreAuthorize("hasRole('ROLE_MODERATOR')")
+    public String editPost(@RequestParam(name = "id") Long id,
+                           @RequestParam(name = "title") String title,
+                           @RequestParam(name = "shortContent") String shortContent,
+                           @RequestParam(name = "content") String content){
 
-        groupsRepository.save(new Groups(null, name, shortName));
+        Optional<NewsPost> post = newsPostRepository.findById(id);
+        if(post.isPresent()){
+            post.get().setTitle(title);
+            post.get().setShortContent(shortContent);
+            post.get().setContent(content);
 
-        return "redirect:/groups";
-    }
-
-    //////////////////////////END GROUPS///////////////////////////////////////////////////////
-
-    ///////////////////////////////STUDENTS///////////////////////////////////////////////////////
-
-    @GetMapping(path = "/students")
-    public String students(ModelMap model){
-
-        List<Students> students = studentsRepository.findAll();
-        model.addAttribute("students", students);
-        return "students";
-    }
-
-    @PostMapping(path = "/addStudent")
-    public String addStudent(@RequestParam(name = "name") String name,
-                             @RequestParam(name = "surname") String surname,
-                             @RequestParam(name = "year") int year){
-
-        studentsRepository.save(new Students(null, name, surname, year, null, null));
-
-        return "redirect:/students";
-    }
-
-
-
-    @GetMapping(path = "/editStudentPage/{id}")
-    public String editStudentPage(ModelMap model, @PathVariable(name = "id") Long id){
-
-        Optional<Students> student = studentsRepository.findById(id);
-        model.addAttribute("student", student.orElse(new Students(null, "No Name", "No Name", 0, null, null)));
-
-        List<Courses> notAttend = coursesRepository.findAll();
-        notAttend.removeAll(student.get().getCourses());
-        model.addAttribute("notAttendCourses", notAttend);
-        ///////////////////////////////////////////////////////////////////////
-
-        List<Groups> notAttendGroups = groupsRepository.findAll();
-        notAttendGroups.removeAll(student.get().getGroups());
-        model.addAttribute("notAttendGroups", notAttendGroups);
-
-
-
-        return "editStudentPage";
-    }
-
-    @PostMapping(path = "/editStudent")
-    public String editStudent(@RequestParam(name = "id") Long id,
-                              @RequestParam(name = "name") String name,
-                              @RequestParam(name = "surname") String surname,
-                              @RequestParam(name = "year") int year){
-
-        Optional<Students> student = studentsRepository.findById(id);
-        if(student.isPresent()){
-            student.get().setName(name);
-            student.get().setSurname(surname);
-            student.get().setYearOfAddmission(year);
-
-            studentsRepository.save(student.get());
+            newsPostRepository.save(post.get());
         }
 
 
-        return "redirect:/editStudentPage/"+id;
+        return "redirect:/newsPage/"+id;
     }
 
-    @PostMapping(path = "/deleteStudent")
-    public String deleteStudent(@RequestParam(name = "id") Long id){
 
-        studentsRepository.deleteById(id);
-        return "redirect:/students";
-    }
+    @PostMapping("/deletePost")
+    @PreAuthorize("hasRole('ROLE_MODERATOR')")
+    public String deletePost(@RequestParam(name = "id") Long id){
 
-/*    @GetMapping(path = "/addCourseToStudentPage/{idshka}")//Artyk, kerek emes eken
-    public String addCourseToStudentPage(ModelMap model, @PathVariable(name = "idshka") Long id){
-        Optional<Students> opStudent = studentsRepository.findById(id);
-//        if (opStudent.isPresent()) {
-            Students s = opStudent.get();
-            List<Courses> notAttendCourses = coursesRepository.findCoursesByStudentsIsNotContaining(s);
-//        }
-
-//        for (Courses c : notAttendCourses)//Pashet
-//            System.out.println(c.getName());
-
-        model.addAttribute("notAttendCourses", notAttendCourses);
-        model.addAttribute("studentId", id);
-
-        return "addCourseToStudentPage";
-    }*/
-
-
-    @PostMapping(path = "/addCourseToStudent")
-    public String addCourseToStudent(@RequestParam(name = "studentId") Long studentId,
-                                    @RequestParam(name = "courseId") Long courseId){
-
-        Optional<Students> student = studentsRepository.findById(studentId);//Searching student
-        Optional<Courses> course = coursesRepository.findById(courseId);//Searching course
-        if(student.isPresent() && course.isPresent()){
-            student.get().getCourses().add(coursesRepository.findById(courseId).get());//Tut ya zakidyvayu sootvetstvuyushi curs k studentu
-            studentsRepository.save(student.get());
-
+        Optional<NewsPost> post = newsPostRepository.findById(id);
+        if(post.isPresent()){
+            newsPostRepository.delete(post.get());
         }
 
-        return "redirect:/editStudentPage/"+studentId;
+        return "redirect:/";
     }
 
-    @PostMapping(path = "/removeCourseFromStudent")
-    public String removeCourseFromStudent(@RequestParam(name = "course_id") Long course_id,
-                                          @RequestParam(name = "student_id") Long student_id){
 
-        Students student = studentsRepository.findById(student_id).get();
-        student.getCourses().remove(coursesRepository.findById(course_id).get());
-        studentsRepository.save(student);
-
-        return "redirect:/editStudentPage/"+student_id;
-    }
-
-    /////////////////////////////ADD GROUP/////////////////////////////////////////////////////////////////////////
-
-    @PostMapping(path = "/addGroupToStudent")
-    public String addGroupToStudent(@RequestParam(name = "studentId") Long studentId,
-                                    @RequestParam(name = "groupId") Long groupId){
-
-        Students student = studentsRepository.findById(studentId).get();
-        student.getGroups().add(groupsRepository.findById(groupId).get());
-        studentsRepository.save(student);
-
-        return "redirect:/editStudentPage/"+studentId;
-    }
-
-    @PostMapping(path = "/removeGroupFromStudent")
-    public String removeGroupFromStudent(@RequestParam(name = "group_id") Long group_id,
-                                          @RequestParam(name = "student_id") Long student_id){
-
-        Students student = studentsRepository.findById(student_id).get();
-        student.getGroups().remove(groupsRepository.findById(group_id).get());
-        studentsRepository.save(student);
-
-        return "redirect:/editStudentPage/"+student_id;
-    }
 }
